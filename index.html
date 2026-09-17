@@ -146,7 +146,24 @@
     margin-top:3px; line-height:1.15; max-width:64px;
   }
   .bar-chart-empty{ color: var(--muted); font-size:0.85rem; text-align:center; margin:auto; }
-
+  #gameCard{ text-align:center; }
+  .game-hint{ color: var(--muted); font-size:0.78rem; margin: -4px 0 12px; }
+  #gameCanvas{
+    width:100%;
+    max-width: 360px;
+    aspect-ratio: 320 / 380;
+    display:block;
+    margin: 0 auto;
+    border-radius: 14px;
+    border: 1px solid rgba(212,175,55,0.3);
+    background: #0f0518;
+    touch-action: none;
+  }
+  .game-scorebar{
+    display:flex; justify-content:center; gap:24px;
+    margin-top: 12px; font-size:0.9rem; color: var(--muted);
+  }
+  .game-scorebar b{ color: var(--gold-light); font-size:1.05rem; }
 
   .tabs{ display:flex; gap:8px; margin: 6px 0 14px; }
   .tab{
@@ -258,7 +275,15 @@
       </table>
     </div>
   </div>
-
+  <div class="card" id="gameCard">
+    <h2>🪩 Mirrorball Drop</h2>
+    <p class="game-hint">Waiting for the judges' scores? Tap or press space to flap — dodge the poles!</p>
+    <canvas id="gameCanvas" width="320" height="380"></canvas>
+    <div class="game-scorebar">
+      <span>Score: <b id="gameScore">0</b></span>
+      <span>Best: <b id="gameBest">0</b></span>
+    </div>
+  </div>
   <p class="footer-note">
     Data syncs to a shared Google Sheet for the whole group.<br>
     Refreshes automatically every 15s — pull down or tap the button below to refresh now.
@@ -516,7 +541,189 @@ function renderBreakdown(){
   const grandTotal = personTotals.reduce((a,b) => a+b, 0);
   tfoot.innerHTML = `<tr><td>Total</td>${personTotals.map(t => `<td>${t}</td>`).join('')}<td>${grandTotal}</td></tr>`;
 }
+/* ============================================================
+   MIRRORBALL DROP — a tiny Flappy-Bird-style game
+   ============================================================ */
+(function(){
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const scoreEl = document.getElementById('gameScore');
+  const bestEl = document.getElementById('gameBest');
 
+  let best = 0;
+  try{ best = parseInt(localStorage.getItem('chillcount_flappy_best') || '0', 10) || 0; }catch(e){}
+  bestEl.textContent = best;
+
+  const GRAVITY = 0.45;
+  const FLAP = -7.5;
+  const PIPE_GAP = 130;
+  const PIPE_WIDTH = 54;
+  const PIPE_SPEED = 2.6;
+  const PIPE_SPACING = 190;
+  const BALL_RADIUS = 15;
+
+  let ball, pipes, score, frame, state; // state: 'ready' | 'playing' | 'over'
+
+  function reset(){
+    ball = { x: W*0.28, y: H/2, vy: 0 };
+    pipes = [];
+    score = 0;
+    frame = 0;
+    state = 'ready';
+    scoreEl.textContent = '0';
+  }
+
+  function spawnPipe(){
+    const margin = 40;
+    const gapCenter = margin + PIPE_GAP/2 + Math.random() * (H - 2*margin - PIPE_GAP);
+    pipes.push({ x: W + PIPE_WIDTH, gapCenter, passed:false });
+  }
+
+  function flap(){
+    if(state === 'ready'){
+      state = 'playing';
+    }
+    if(state === 'playing'){
+      ball.vy = FLAP;
+    }
+    if(state === 'over'){
+      reset();
+    }
+  }
+
+  function update(){
+    if(state !== 'playing') return;
+    frame++;
+    ball.vy += GRAVITY;
+    ball.y += ball.vy;
+
+    if(frame % Math.round(PIPE_SPACING / PIPE_SPEED) === 0){
+      spawnPipe();
+    }
+
+    pipes.forEach(p => { p.x -= PIPE_SPEED; });
+    while(pipes.length && pipes[0].x < -PIPE_WIDTH) pipes.shift();
+
+    pipes.forEach(p => {
+      if(!p.passed && p.x + PIPE_WIDTH/2 < ball.x){
+        p.passed = true;
+        score++;
+        scoreEl.textContent = score;
+      }
+    });
+
+    if(ball.y - BALL_RADIUS < 0 || ball.y + BALL_RADIUS > H){
+      endGame();
+      return;
+    }
+    for(const p of pipes){
+      const withinX = ball.x + BALL_RADIUS > p.x - PIPE_WIDTH/2 && ball.x - BALL_RADIUS < p.x + PIPE_WIDTH/2;
+      if(withinX){
+        const topEdge = p.gapCenter - PIPE_GAP/2;
+        const botEdge = p.gapCenter + PIPE_GAP/2;
+        if(ball.y - BALL_RADIUS < topEdge || ball.y + BALL_RADIUS > botEdge){
+          endGame();
+          return;
+        }
+      }
+    }
+  }
+
+  function endGame(){
+    state = 'over';
+    if(score > best){
+      best = score;
+      bestEl.textContent = best;
+      try{ localStorage.setItem('chillcount_flappy_best', String(best)); }catch(e){}
+    }
+  }
+
+  function drawBackground(){
+    ctx.fillStyle = '#0f0518';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = 'rgba(212,175,55,0.18)';
+    for(let i=0;i<18;i++){
+      const sx = (i*53 + (frame*0.15)) % W;
+      const sy = (i*97) % H;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.4, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawPipes(){
+    pipes.forEach(p => {
+      const topH = p.gapCenter - PIPE_GAP/2;
+      const botY = p.gapCenter + PIPE_GAP/2;
+      const grad = ctx.createLinearGradient(p.x-PIPE_WIDTH/2, 0, p.x+PIPE_WIDTH/2, 0);
+      grad.addColorStop(0, '#3a1e52');
+      grad.addColorStop(1, '#5c2f7a');
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 2;
+      ctx.fillRect(p.x-PIPE_WIDTH/2, 0, PIPE_WIDTH, topH);
+      ctx.strokeRect(p.x-PIPE_WIDTH/2, 0, PIPE_WIDTH, topH);
+      ctx.fillRect(p.x-PIPE_WIDTH/2, botY, PIPE_WIDTH, H-botY);
+      ctx.strokeRect(p.x-PIPE_WIDTH/2, botY, PIPE_WIDTH, H-botY);
+    });
+  }
+
+  function drawBall(){
+    ctx.save();
+    ctx.translate(ball.x, ball.y);
+    ctx.rotate(Math.max(-0.5, Math.min(0.9, ball.vy * 0.06)));
+    const grad = ctx.createRadialGradient(-5,-5,2, 0,0,BALL_RADIUS);
+    grad.addColorStop(0, '#fdf6e3');
+    grad.addColorStop(0.5, '#f3d98b');
+    grad.addColorStop(1, '#b3872a');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0,0,BALL_RADIUS,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1;
+    for(let i=-2;i<=2;i++){
+      ctx.beginPath();
+      ctx.moveTo(-BALL_RADIUS, i*5);
+      ctx.lineTo(BALL_RADIUS, i*5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawOverlay(){
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = '700 15px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    if(state === 'ready'){
+      ctx.fillText('Tap to start', W/2, H/2 - 10);
+      ctx.font = '400 12px Segoe UI, sans-serif';
+      ctx.fillText('Dodge the poles ✨', W/2, H/2 + 12);
+    } else if(state === 'over'){
+      ctx.fillText('Game over — tap to retry', W/2, H/2 - 10);
+      ctx.font = '400 12px Segoe UI, sans-serif';
+      ctx.fillText('Score ' + score + '  ·  Best ' + best, W/2, H/2 + 12);
+    }
+  }
+
+  function loop(){
+    update();
+    drawBackground();
+    drawPipes();
+    drawBall();
+    if(state !== 'playing') drawOverlay();
+    requestAnimationFrame(loop);
+  }
+
+  canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); flap(); }, { passive:false });
+  window.addEventListener('keydown', (e) => {
+    if(e.code === 'Space'){ e.preventDefault(); flap(); }
+  });
+
+  reset();
+  loop();
+})();
 // tabs
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
