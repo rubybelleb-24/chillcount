@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>✨ Chills Tracker — Dancing with the Stars</title>
+<style>
+  :root{
+    --gold: #d4af37;
+    --gold-light: #f3d98b;
+    --red: #b3122e;
+    --black: #0b0b0d;
+    --charcoal: #17171b;
+    --card: #1f1f24;
+    --silver: #cfd2d6;
+    --text: #f5f1e6;
+    --muted: #a9a4a0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(circle at 15% 8%, rgba(212,175,55,0.18), transparent 40%),
+      radial-gradient(circle at 85% 92%, rgba(179,18,46,0.20), transparent 45%),
+      linear-gradient(180deg, #0b0b0d 0%, #131316 100%);
+    color: var(--text);
+    min-height:100vh;
+    padding-bottom: 60px;
+  }
+  .wrap{ max-width: 720px; margin: 0 auto; padding: 18px 16px 8px; }
+
+  header{ text-align:center; padding: 18px 10px 10px; }
+  header h1{
+    margin:0;
+    font-size: 1.7rem;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--gold-light), var(--gold) 45%, #fff 55%, var(--gold));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 6s linear infinite;
+  }
+  header p{ color: var(--muted); margin: 6px 0 0; font-size: 0.9rem; }
+  @keyframes shimmer{ to{ background-position: 200% center; } }
+
+  .card{
+    background: var(--card);
+    border: 1px solid rgba(212,175,55,0.25);
+    border-radius: 16px;
+    padding: 18px;
+    margin: 14px 0;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+  }
+  .card h2{
+    margin: 0 0 12px;
+    font-size: 1.05rem;
+    color: var(--gold-light);
+    display:flex; align-items:center; gap:8px;
+  }
+
+  label{ display:block; font-size:0.8rem; color: var(--muted); margin: 10px 0 5px; text-transform:uppercase; letter-spacing:0.06em;}
+  select, input[type=text]{
+    width:100%;
+    padding: 12px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: #0f0f12;
+    color: var(--text);
+    font-size: 1rem;
+  }
+  select:focus, input:focus{ outline: 2px solid var(--gold); }
+
+  .btn{
+    width:100%;
+    margin-top: 16px;
+    padding: 15px;
+    border-radius: 12px;
+    border: none;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #1a1300;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    cursor: pointer;
+    transition: transform 0.08s ease;
+    box-shadow: 0 4px 14px rgba(212,175,55,0.35);
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn:disabled{ opacity:0.6; }
+
+  .status{ text-align:center; font-size:0.85rem; color: var(--muted); margin-top:10px; min-height: 1.2em; }
+  .status.ok{ color: #8ee08e; }
+  .status.err{ color: #ff8b8b; }
+
+  .tabs{ display:flex; gap:8px; margin: 6px 0 14px; }
+  .tab{
+    flex:1;
+    text-align:center;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--charcoal);
+    color: var(--muted);
+    font-size:0.85rem;
+    font-weight:600;
+    cursor:pointer;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .tab.active{
+    background: linear-gradient(135deg, rgba(212,175,55,0.25), rgba(179,18,46,0.25));
+    color: var(--gold-light);
+    border-color: var(--gold);
+  }
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  .leader-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .leader-row:last-child{ border-bottom:none; }
+  .leader-name{ display:flex; align-items:center; gap:10px; font-weight:600; }
+  .rank{
+    width:26px; height:26px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.8rem; font-weight:800; color:#1a1300;
+    background: var(--silver);
+    flex:0 0 auto;
+  }
+  .rank.gold{ background: linear-gradient(135deg, var(--gold-light), var(--gold)); }
+  .rank.silver{ background: linear-gradient(135deg, #eaeaea, #b9b9b9); }
+  .rank.bronze{ background: linear-gradient(135deg, #d8975a, #a9642b); color:#fff;}
+  .leader-count{ font-weight:800; color: var(--gold-light); font-size:1.05rem; }
+
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling: touch; border-radius: 10px; }
+  table{ border-collapse: collapse; width:100%; min-width: 420px; font-size:0.85rem; }
+  th, td{ padding: 9px 10px; text-align:center; white-space:nowrap; }
+  th{ background: var(--charcoal); color: var(--gold-light); position: sticky; top:0; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;}
+  td:first-child, th:first-child{ text-align:left; position: sticky; left:0; background: var(--card); font-weight:600; }
+  th:first-child{ background: var(--charcoal); z-index:2; }
+  tbody tr:nth-child(odd) td{ background-color: rgba(255,255,255,0.02); }
+  tbody tr:nth-child(odd) td:first-child{ background-color: #232328; }
+  .total-col{ color: var(--gold-light); font-weight:800; }
+  tfoot td{ font-weight:800; color: var(--gold-light); background: var(--charcoal) !important; }
+
+  .empty{ text-align:center; color: var(--muted); padding: 20px 10px; font-size:0.9rem; }
+  .footer-note{ text-align:center; color: var(--muted); font-size: 0.75rem; margin-top: 22px; line-height:1.5; }
+  .footer-note code{ background:#000; padding:1px 5px; border-radius:5px; color: var(--gold-light); }
+  .sparkle{ opacity:0.85; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>✨ Chills Tracker ✨</h1>
+    <p>Dancing with the Stars — Season 35 chills, logged live</p>
+  </header>
+
+  <div class="card">
+    <h2>💃 Log a chill</h2>
+    <label for="personInput">Your name</label>
+    <input id="personInput" type="text" list="personList" placeholder="e.g. Sam" autocomplete="off">
+    <datalist id="personList"></datalist>
+
+    <label for="starSelect">Which star gave you chills?</label>
+    <select id="starSelect"></select>
+
+    <button class="btn" id="logBtn">✨ I Got Chills! ✨</button>
+    <div class="status" id="statusMsg"></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-panel="leaderboard">🏆 Leaderboard</div>
+    <div class="tab" data-panel="breakdown">📊 Full Breakdown</div>
+  </div>
+
+  <div class="card panel active" id="leaderboard">
+    <h2>🏆 Most Chills — Friends</h2>
+    <div id="leaderboardBody"><div class="empty">No chills logged yet. Be the first!</div></div>
+  </div>
+
+  <div class="card panel" id="breakdown">
+    <h2>📊 Chills by Star &amp; Friend</h2>
+    <div class="table-scroll">
+      <table id="breakdownTable">
+        <thead><tr><th>Star</th></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <p class="footer-note">
+    Data syncs to a shared Google Sheet for the whole group.<br>
+    Refreshes automatically every 15s — pull down or tap the button below to refresh now.
+  </p>
+  <button class="btn" id="refreshBtn" style="background:linear-gradient(135deg,#3a3a40,#232328); color:var(--gold-light); box-shadow:none;">↻ Refresh now</button>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — edit these two things before you publish
+   ============================================================ */
+const CONFIG = {
+  // Paste the Google Apps Script Web App URL here (ends in /exec).
+  // See the setup instructions you were given for how to create this.
+  API_URL: "https://script.google.com/macros/s/AKfycbwN84OFSdf5N3ShKr1r4kSOqGar0cQWRRFh3VHlBeH7tVqGwlJDyYwqcdVFfCOXUkr29g/exec",
+
+  // Edit this list to match your season's cast (or trim it to just
+  // the stars you're following). Order here = order in the dropdown.
+  STARS: [
+    "Tatyana Ali",
+    "Tyler Cameron",
+    "Giada De Laurentiis",
+    "Jenna Dewan",
+    "Ezra Frech",
+    "Amber Glenn",
+    "Taylor Hanson",
+    "Maura Higgins",
+    "Conner Leavitt",
+    "Ciara Miller",
+    "Sarah Jane Nader",
+    "Jackson Olson",
+    "Guillermo Rodriguez",
+    "Harry Shum Jr.",
+    "Julia Stiles",
+    "Connor Wood"
+  ],
+
+  POLL_MS: 15000
+};
+/* ============================================================ */
+
+let rows = []; // {timestamp, star, person}
+
+function $(id){ return document.getElementById(id); }
+
+function populateStarSelect(){
+  const sel = $('starSelect');
+  sel.innerHTML = CONFIG.STARS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function setStatus(msg, type){
+  const el = $('statusMsg');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+async function fetchRows(){
+  if(!CONFIG.API_URL || CONFIG.API_URL.includes('PASTE_YOUR')){
+    setStatus('⚠️ Not connected yet — paste your Apps Script URL into CONFIG.API_URL in the code.', 'err');
+    return;
+  }
+  try{
+    const res = await fetch(CONFIG.API_URL, { method: 'GET' });
+    const data = await res.json();
+    rows = (data.rows || []).map(r => ({
+      star: r.star,
+      person: r.person,
+      timestamp: r.timestamp
+    }));
+    render();
+  }catch(err){
+    setStatus('Could not load data — check your connection.', 'err');
+  }
+}
+
+async function logChill(star, person){
+  const btn = $('logBtn');
+  btn.disabled = true;
+  setStatus('Saving…');
+  try{
+    await fetch(, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight on Apps Script
+      body: JSON.stringify({ star, person })
+    });
+    // optimistic local update
+    rows.push({ star, person, timestamp: new Date().toISOString() });
+    render();
+    setStatus(`✨ Logged a chill for ${star} (${person})!`, 'ok');
+    savePersonName(person);
+  }catch(err){
+    setStatus('Something went wrong saving that — try again.', 'err');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function savePersonName(name){
+  try{
+    localStorage.setItem('chills_last_name', name);
+    const known = JSON.parse(localStorage.getItem('chills_known_names') || '[]');
+    if(!known.includes(name)){
+      known.push(name);
+      localStorage.setItem('chills_known_names', JSON.stringify(known));
+    }
+  }catch(e){}
+}
+
+function restorePersonName(){
+  try{
+    const last = localStorage.getItem('chills_last_name');
+    if(last) $('personInput').value = last;
+    const known = JSON.parse(localStorage.getItem('chills_known_names') || '[]');
+    const uniqueFromRows = Array.from(new Set(rows.map(r => r.person)));
+    const all = Array.from(new Set([...known, ...uniqueFromRows]));
+    $('personList').innerHTML = all.map(n => `<option value="${escapeHtml(n)}">`).join('');
+  }catch(e){}
+}
+
+function render(){
+  renderLeaderboard();
+  renderBreakdown();
+  restorePersonName();
+}
+
+function renderLeaderboard(){
+  const totals = {};
+  rows.forEach(r => { totals[r.person] = (totals[r.person] || 0) + 1; });
+  const sorted = Object.entries(totals).sort((a,b) => b[1]-a[1]);
+  const container = $('leaderboardBody');
+  if(sorted.length === 0){
+    container.innerHTML = '<div class="empty">No chills logged yet. Be the first!</div>';
+    return;
+  }
+  const rankClass = i => i===0 ? 'gold' : i===1 ? 'silver' : i===2 ? 'bronze' : '';
+  const medal = i => i===0 ? '👑' : i===1 ? '' : i===2 ? '' : '';
+  container.innerHTML = sorted.map(([name, count], i) => `
+    <div class="leader-row">
+      <div class="leader-name"><span class="rank ${rankClass(i)}">${i+1}</span>${escapeHtml(name)} ${medal(i)}</div>
+      <div class="leader-count">${count} ✨</div>
+    </div>
+  `).join('');
+}
+
+function renderBreakdown(){
+  const people = Array.from(new Set(rows.map(r => r.person))).sort((a,b) => a.localeCompare(b));
+  const table = $('breakdownTable');
+  const thead = table.querySelector('thead tr');
+  const tbody = table.querySelector('tbody');
+  const tfoot = table.querySelector('tfoot');
+
+  thead.innerHTML = '<th>Star</th>' + people.map(p => `<th>${escapeHtml(p)}</th>`).join('') + '<th>Total</th>';
+
+  const starTotals = CONFIG.STARS.map(star => {
+    const counts = people.map(p => rows.filter(r => r.star === star && r.person === p).length);
+    const total = counts.reduce((a,b) => a+b, 0);
+    return { star, counts, total };
+  }).sort((a,b) => b.total - a.total);
+
+  tbody.innerHTML = starTotals.map(row => `
+    <tr>
+      <td>${escapeHtml(row.star)}</td>
+      ${row.counts.map(c => `<td>${c || ''}</td>`).join('')}
+      <td class="total-col">${row.total}</td>
+    </tr>
+  `).join('');
+
+  const personTotals = people.map(p => rows.filter(r => r.person === p).length);
+  const grandTotal = personTotals.reduce((a,b) => a+b, 0);
+  tfoot.innerHTML = `<tr><td>Total</td>${personTotals.map(t => `<td>${t}</td>`).join('')}<td>${grandTotal}</td></tr>`;
+}
+
+// tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    $(tab.dataset.panel).classList.add('active');
+  });
+});
+
+$('logBtn').addEventListener('click', () => {
+  const person = $('personInput').value.trim();
+  const star = $('starSelect').value;
+  if(!person){
+    setStatus('Type your name first!', 'err');
+    $('personInput').focus();
+    return;
+  }
+  logChill(star, person);
+});
+
+$('refreshBtn').addEventListener('click', () => { setStatus('Refreshing…'); fetchRows(); });
+
+populateStarSelect();
+fetchRows();
+setInterval(fetchRows, CONFIG.POLL_MS);
+</script>
+</body>
+</html>
