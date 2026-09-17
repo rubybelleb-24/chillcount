@@ -94,6 +94,60 @@
   .status.ok{ color: #8ee08e; }
   .status.err{ color: #ff8b8b; }
 
+  #topChartCard{ display:flex; flex-direction:column; height: 300px; }
+  .bar-chart-scroll{ overflow-x:auto; overflow-y:hidden; flex:1; -webkit-overflow-scrolling:touch; }
+  .bar-chart{
+    display:flex;
+    align-items:flex-start;
+    gap:16px;
+    height:100%;
+    min-width:max-content;
+    padding: 6px 6px 0;
+  }
+  .bar-col{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    width:58px;
+    flex:0 0 auto;
+    height:100%;
+  }
+  .bar-chart-inner{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    align-items:center;
+    width:100%;
+  }
+  .bar-photo, .bar-avatar-fallback{
+    width:42px; height:42px;
+    border-radius:50%;
+    border: 2px solid var(--gold);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    margin-bottom: 4px;
+    flex: 0 0 auto;
+  }
+  .bar-photo{ object-fit:cover; background: var(--charcoal); }
+  .bar-avatar-fallback{
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.7rem; font-weight:800; color:#1a1300;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  }
+  .bar-fill{
+    width:26px;
+    border-radius:6px 6px 2px 2px;
+    background: linear-gradient(180deg, var(--gold-light), var(--red));
+    min-height:6px;
+  }
+  .bar-count{ font-size:0.75rem; font-weight:800; color: var(--gold-light); margin-top:6px; }
+  .bar-name{
+    font-size:0.65rem; color: var(--muted); text-align:center;
+    margin-top:3px; line-height:1.15; max-width:64px;
+  }
+  .bar-chart-empty{ color: var(--muted); font-size:0.85rem; text-align:center; margin:auto; }
+
+
   .tabs{ display:flex; gap:8px; margin: 6px 0 14px; }
   .tab{
     flex:1;
@@ -171,6 +225,13 @@
     <div class="status" id="statusMsg"></div>
   </div>
 
+  <div class="card" id="topChartCard">
+    <h2>🔥 Top 10 Chill Earners</h2>
+    <div class="bar-chart-scroll">
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+  </div>
+
   <div class="tabs">
     <div class="tab active" data-panel="starLeaderboard">⭐ Stars</div>
     <div class="tab" data-panel="friendLeaderboard">🏆 Friends</div>
@@ -212,7 +273,7 @@
 const CONFIG = {
   // Paste the Google Apps Script Web App URL here (ends in /exec).
   // See the setup instructions you were given for how to create this.
-  API_URL: "https://script.google.com/macros/s/AKfycbwN84OFSdf5N3ShKr1r4kSOqGar0cQWRRFh3VHlBeH7tVqGwlJDyYwqcdVFfCOXUkr29g/exec",
+  API_URL: "PASTE_YOUR_APPS_SCRIPT_URL_HERE",
 
   // Edit this list to match your season's cast (or trim it to just
   // the stars you're following). Order here = order in the dropdown.
@@ -234,6 +295,16 @@ const CONFIG = {
     "Julia Stiles",
     "Connor Wood"
   ],
+
+  // Optional: give any star a face cutout by mapping their exact name
+  // (as written above) to an image file path. Crop the photo to a
+  // square yourself and drop it in an "images/" folder next to this
+  // HTML file, then reference it here, e.g.:
+  //   "Tatyana Ali": "images/tatyana-ali.png",
+  // Any star left out just shows a gold initials badge instead.
+  STAR_PHOTOS: {
+    // "Star Name": "images/filename.png",
+  },
 
   POLL_MS: 15000
 };
@@ -328,10 +399,55 @@ function restorePersonName(){
 }
 
 function render(){
+  renderTopChart();
   renderStarLeaderboard();
   renderLeaderboard();
   renderBreakdown();
   restorePersonName();
+}
+
+function getInitials(name){
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0] ? parts[0][0] : '';
+  const last = parts.length > 1 ? parts[parts.length-1][0] : '';
+  return (first + last).toUpperCase();
+}
+
+function renderTopChart(){
+  const container = $('barChart');
+  const totals = {};
+  CONFIG.STARS.forEach(s => { totals[s] = 0; });
+  rows.forEach(r => { totals[r.star] = (totals[r.star] || 0) + 1; });
+
+  const top10 = Object.entries(totals)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0, 10);
+
+  if(rows.length === 0){
+    container.innerHTML = '<div class="bar-chart-empty">No chills logged yet — the chart will fill in once your group starts tapping ✨</div>';
+    return;
+  }
+
+  const maxVal = Math.max(...top10.map(([,c]) => c), 1);
+  const maxBarPx = 130; // tallest a bar can grow inside the fixed chart area
+
+  container.innerHTML = top10.map(([name, count]) => {
+    const barHeight = Math.max(6, Math.round((count / maxVal) * maxBarPx));
+    const photoUrl = CONFIG.STAR_PHOTOS[name];
+    const photoHtml = photoUrl
+      ? `<img class="bar-photo" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(name)}">`
+      : `<div class="bar-avatar-fallback">${escapeHtml(getInitials(name))}</div>`;
+    return `
+      <div class="bar-col">
+        <div class="bar-chart-inner">
+          ${photoHtml}
+          <div class="bar-fill" style="height:${barHeight}px"></div>
+        </div>
+        <div class="bar-count">${count}</div>
+        <div class="bar-name">${escapeHtml(name)}</div>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderStarLeaderboard(){
