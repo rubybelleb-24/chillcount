@@ -95,21 +95,22 @@
   .status.err{ color: #ff8b8b; }
 
   #topChartCard{ display:flex; flex-direction:column; height: 300px; }
-  .bar-chart-scroll{ overflow-x:auto; overflow-y:hidden; flex:1; -webkit-overflow-scrolling:touch; }
+  .bar-chart-scroll{ overflow:visible; flex:1; }
   .bar-chart{
     display:flex;
     align-items:flex-start;
-    gap:16px;
+    justify-content:space-between;
+    gap:6px;
     height:100%;
-    min-width:max-content;
-    padding: 6px 6px 0;
+    padding: 6px 2px 0;
   }
   .bar-col{
     display:flex;
     flex-direction:column;
     align-items:center;
-    width:58px;
-    flex:0 0 auto;
+    flex:1 1 0;
+    min-width:0;
+    max-width:90px;
     height:100%;
   }
   .bar-chart-inner{
@@ -120,26 +121,62 @@
     align-items:center;
     width:100%;
   }
-   .bar-fill{
-    width:26px;
+  .bar-fill{
+    width:70%;
+    max-width:30px;
     border-radius:6px 6px 2px 2px;
     min-height:6px;
     position: relative;
     overflow: hidden;
     background:
-      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.95) 0 2px, transparent 3px),
-      radial-gradient(circle at 70% 55%, rgba(255,255,255,0.8) 0 1.5px, transparent 2.5px),
-      radial-gradient(circle at 45% 80%, rgba(255,255,255,0.85) 0 1.5px, transparent 2.5px),
-      linear-gradient(180deg, #f5f6f8 0%, #cfd2d6 45%, #9a9ea4 75%, #cfd2d6 100%);
-    box-shadow: 0 0 8px rgba(255,255,255,0.35), inset 0 0 6px rgba(255,255,255,0.4);
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0 3px, rgba(255,255,255,0) 3px 7px),
+      repeating-linear-gradient(-45deg, rgba(0,0,0,0.28) 0 3px, rgba(0,0,0,0) 3px 7px),
+      linear-gradient(180deg, #f2f3f5 0%, #c3c6cb 45%, #8b8f95 75%, #c3c6cb 100%);
+    box-shadow: 0 0 8px rgba(255,255,255,0.4), inset 0 0 6px rgba(255,255,255,0.35);
+  }
+  .bar-fill::before{
+    content:'';
+    position:absolute;
+    top:-20%; left:-60%;
+    width:35%; height:140%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.9), transparent);
+    transform: rotate(20deg);
+    animation: discoShine 3.2s ease-in-out infinite;
+  }
+  .bar-fill::after{
+    content:'';
+    position:absolute; inset:0;
+    background:
+      radial-gradient(circle at 25% 20%, #fff 0 1.4px, transparent 2px),
+      radial-gradient(circle at 65% 40%, #fff 0 1.1px, transparent 2px),
+      radial-gradient(circle at 40% 65%, #fff 0 1.2px, transparent 2px),
+      radial-gradient(circle at 80% 78%, #fff 0 1.1px, transparent 2px);
+    animation: twinkle 2s ease-in-out infinite alternate;
+  }
+  @keyframes discoShine{
+    0%{ left:-60%; }
+    45%{ left:130%; }
+    100%{ left:130%; }
+  }
+  @keyframes twinkle{
+    from{ opacity:0.35; }
+    to{ opacity:1; }
   }
   .bar-count{ font-size:0.75rem; font-weight:800; color: var(--gold-light); margin-top:6px; }
   .bar-name{
-    font-size:0.65rem; color: var(--muted); text-align:center;
-    margin-top:3px; line-height:1.15; max-width:64px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    font-size:0.6rem; color: var(--muted); text-align:center;
+    margin-top:3px; line-height:1.2; width:100%;
   }
-  .bar-chart-empty{ color: var(--muted); font-size:0.85rem; text-align:center; margin:auto; }
-  #gameCard{ text-align:center; }
+  .bar-name-line{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:100%;
+  }
+  .bar-chart-empty{ color: var(--muted); font-size:0.85rem; text-align:center; margin:auto; }  #gameCard{ text-align:center; }
   .game-hint{ color: var(--muted); font-size:0.78rem; margin: -4px 0 12px; }
   #gameCanvas{
     width:100%;
@@ -236,7 +273,7 @@
   </div>
 
   <div class="card" id="topChartCard">
-    <h2>🔥 Top 10 Chill Earners</h2>
+    <h2>🔥 Top Chill Earners</h2>
     <div class="bar-chart-scroll">
       <div class="bar-chart" id="barChart"></div>
     </div>
@@ -437,19 +474,21 @@ function renderTopChart(){
   CONFIG.STARS.forEach(s => { totals[s] = 0; });
   rows.forEach(r => { totals[r.star] = (totals[r.star] || 0) + 1; });
 
-  const top10 = Object.entries(totals)
+  const TOP_N = 8; // fits without horizontal scroll; adjust between 7-9 if you want
+
+  const topStars = Object.entries(totals)
     .sort((a,b) => b[1]-a[1])
-    .slice(0, 10);
+    .slice(0, TOP_N);
 
   if(rows.length === 0){
     container.innerHTML = '<div class="bar-chart-empty">No chills logged yet — the chart will fill in once your group starts tapping ✨</div>';
     return;
   }
 
-  const maxVal = Math.max(...top10.map(([,c]) => c), 1);
+  const maxVal = Math.max(...topStars.map(([,c]) => c), 1);
   const maxBarPx = 130; // tallest a bar can grow inside the fixed chart area
 
-  container.innerHTML = top10.map(([name, count]) => {
+  container.innerHTML = topStars.map(([name, count]) => {
     const barHeight = Math.max(6, Math.round((count / maxVal) * maxBarPx));
     const parts = name.trim().split(/\s+/);
     const firstLine = parts[0];
@@ -460,12 +499,14 @@ function renderTopChart(){
           <div class="bar-fill" style="height:${barHeight}px"></div>
         </div>
         <div class="bar-count">${count}</div>
-        <div class="bar-name">${escapeHtml(firstLine)}<br>${escapeHtml(lastLine)}</div>
+        <div class="bar-name">
+          <span class="bar-name-line">${escapeHtml(firstLine)}</span>
+          <span class="bar-name-line">${escapeHtml(lastLine)}</span>
+        </div>
       </div>
     `;
   }).join('');
 }
-
 function renderStarLeaderboard(){
   const totals = {};
   CONFIG.STARS.forEach(s => { totals[s] = 0; });
