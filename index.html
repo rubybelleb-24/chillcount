@@ -120,25 +120,18 @@
     align-items:center;
     width:100%;
   }
-  .bar-photo, .bar-avatar-fallback{
-    width:42px; height:42px;
-    border-radius:50%;
-    border: 2px solid var(--gold);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    margin-bottom: 4px;
-    flex: 0 0 auto;
-  }
-  .bar-photo{ object-fit:cover; background: var(--charcoal); }
-  .bar-avatar-fallback{
-    display:flex; align-items:center; justify-content:center;
-    font-size:0.7rem; font-weight:800; color:#1a1300;
-    background: linear-gradient(135deg, var(--gold-light), var(--gold));
-  }
-  .bar-fill{
+   .bar-fill{
     width:26px;
     border-radius:6px 6px 2px 2px;
-    background: linear-gradient(180deg, var(--gold-light), var(--red));
     min-height:6px;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.95) 0 2px, transparent 3px),
+      radial-gradient(circle at 70% 55%, rgba(255,255,255,0.8) 0 1.5px, transparent 2.5px),
+      radial-gradient(circle at 45% 80%, rgba(255,255,255,0.85) 0 1.5px, transparent 2.5px),
+      linear-gradient(180deg, #f5f6f8 0%, #cfd2d6 45%, #9a9ea4 75%, #cfd2d6 100%);
+    box-shadow: 0 0 8px rgba(255,255,255,0.35), inset 0 0 6px rgba(255,255,255,0.4);
   }
   .bar-count{ font-size:0.75rem; font-weight:800; color: var(--gold-light); margin-top:6px; }
   .bar-name{
@@ -458,18 +451,16 @@ function renderTopChart(){
 
   container.innerHTML = top10.map(([name, count]) => {
     const barHeight = Math.max(6, Math.round((count / maxVal) * maxBarPx));
-    const photoUrl = CONFIG.STAR_PHOTOS[name];
-    const photoHtml = photoUrl
-      ? `<img class="bar-photo" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(name)}">`
-      : `<div class="bar-avatar-fallback">${escapeHtml(getInitials(name))}</div>`;
+    const parts = name.trim().split(/\s+/);
+    const firstLine = parts[0];
+    const lastLine = parts.slice(1).join(' ');
     return `
       <div class="bar-col">
         <div class="bar-chart-inner">
-          ${photoHtml}
           <div class="bar-fill" style="height:${barHeight}px"></div>
         </div>
         <div class="bar-count">${count}</div>
-        <div class="bar-name">${escapeHtml(name)}</div>
+        <div class="bar-name">${escapeHtml(firstLine)}<br>${escapeHtml(lastLine)}</div>
       </div>
     `;
   }).join('');
