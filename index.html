@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>✨ Chill Count — DWTS</title>
+<title>✨ Chill Count — Dancing with the Stars</title>
 <style>
   :root{
     --gold: #d4af37;
@@ -172,11 +172,17 @@
   </div>
 
   <div class="tabs">
-    <div class="tab active" data-panel="leaderboard">🏆 Leaderboard</div>
-    <div class="tab" data-panel="breakdown">📊 Full Breakdown</div>
+    <div class="tab active" data-panel="starLeaderboard">⭐ Stars</div>
+    <div class="tab" data-panel="friendLeaderboard">🏆 Friends</div>
+    <div class="tab" data-panel="breakdown">📊 Breakdown</div>
   </div>
 
-  <div class="card panel active" id="leaderboard">
+  <div class="card panel active" id="starLeaderboard">
+    <h2>⭐ Most Chills — Stars</h2>
+    <div id="starLeaderboardBody"><div class="empty">No chills logged yet. Be the first!</div></div>
+  </div>
+
+  <div class="card panel" id="friendLeaderboard">
     <h2>🏆 Most Chills — Friends</h2>
     <div id="leaderboardBody"><div class="empty">No chills logged yet. Be the first!</div></div>
   </div>
@@ -206,7 +212,7 @@
 const CONFIG = {
   // Paste the Google Apps Script Web App URL here (ends in /exec).
   // See the setup instructions you were given for how to create this.
-  API_URL: "https://script.google.com/macros/s/AKfycbwN84OFSdf5N3ShKr1r4kSOqGar0cQWRRFh3VHlBeH7tVqGwlJDyYwqcdVFfCOXUkr29g/exec",
+  API_URL: "PASTE_YOUR_APPS_SCRIPT_URL_HERE",
 
   // Edit this list to match your season's cast (or trim it to just
   // the stars you're following). Order here = order in the dropdown.
@@ -239,7 +245,13 @@ function $(id){ return document.getElementById(id); }
 
 function populateStarSelect(){
   const sel = $('starSelect');
-  sel.innerHTML = CONFIG.STARS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+  sel.textContent = ''; // clear any existing options
+  CONFIG.STARS.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
 }
 
 function escapeHtml(str){
@@ -276,7 +288,7 @@ async function logChill(star, person){
   btn.disabled = true;
   setStatus('Saving…');
   try{
-    await fetch(, {
+    await fetch(CONFIG.API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight on Apps Script
       body: JSON.stringify({ star, person })
@@ -316,9 +328,30 @@ function restorePersonName(){
 }
 
 function render(){
+  renderStarLeaderboard();
   renderLeaderboard();
   renderBreakdown();
   restorePersonName();
+}
+
+function renderStarLeaderboard(){
+  const totals = {};
+  CONFIG.STARS.forEach(s => { totals[s] = 0; });
+  rows.forEach(r => { totals[r.star] = (totals[r.star] || 0) + 1; });
+  const sorted = Object.entries(totals).sort((a,b) => b[1]-a[1]);
+  const container = $('starLeaderboardBody');
+  if(rows.length === 0){
+    container.innerHTML = '<div class="empty">No chills logged yet. Be the first!</div>';
+    return;
+  }
+  const rankClass = i => i===0 ? 'gold' : i===1 ? 'silver' : i===2 ? 'bronze' : '';
+  const medal = i => i===0 ? '👑' : '';
+  container.innerHTML = sorted.map(([name, count], i) => `
+    <div class="leader-row">
+      <div class="leader-name"><span class="rank ${rankClass(i)}">${i+1}</span>${escapeHtml(name)} ${medal(i)}</div>
+      <div class="leader-count">${count} ✨</div>
+    </div>
+  `).join('');
 }
 
 function renderLeaderboard(){
@@ -391,9 +424,17 @@ $('logBtn').addEventListener('click', () => {
 
 $('refreshBtn').addEventListener('click', () => { setStatus('Refreshing…'); fetchRows(); });
 
-populateStarSelect();
-fetchRows();
-setInterval(fetchRows, CONFIG.POLL_MS);
+function init(){
+  populateStarSelect();
+  fetchRows();
+  setInterval(fetchRows, CONFIG.POLL_MS);
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', init);
+}else{
+  init();
+}
 </script>
 </body>
 </html>
